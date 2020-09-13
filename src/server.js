@@ -1,17 +1,39 @@
-import sirv from 'sirv';
-import polka from 'polka';
-import compression from 'compression';
-import * as sapper from '@sapper/server';
+import sirv from 'sirv'
+import helmet from 'helmet'
+import compression from 'compression'
+import {ignore, session} from './config'
+import * as sapper from '@sapper/server'
+import {NestFactory} from '@nestjs/core'
+import {AppModule} from './app.module'
+import {ValidationPipe} from '@nestjs/common'
 
-const { PORT, NODE_ENV } = process.env;
-const dev = NODE_ENV === 'development';
+const {PORT, NODE_ENV} = process.env
+const dev = NODE_ENV === 'development'
 
-polka() // You can also use Express
-	.use(
-		compression({ threshold: 0 }),
-		sirv('static', { dev }),
-		sapper.middleware()
-	)
-	.listen(PORT, err => {
-		if (err) console.log('error', err);
-	});
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule)
+  const comp = compression({threshold: 0})
+  const statics = sirv('static', {dev})
+  const plugins = [
+    comp,
+    statics,
+    sapper.middleware({
+      ignore,
+      session,
+    }),
+    require('express-rate-limit')({
+      windowMs: 900000,
+      max: 77,
+    }),
+  ]
+
+  if (!dev) {
+    plugins.push(helmet())
+  }
+
+  app.use(...plugins)
+  app.useGlobalPipes(new ValidationPipe())
+  await app.listen(PORT)
+}
+
+bootstrap().then()

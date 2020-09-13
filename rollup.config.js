@@ -7,12 +7,21 @@ import { terser } from 'rollup-plugin-terser';
 import config from 'sapper/config/rollup.js';
 import pkg from './package.json';
 import sveltePreprocess from 'svelte-preprocess';
-import typescript from '@rollup/plugin-typescript';
+import typescript from 'rollup-plugin-typescript2';
 import packageImporter from 'node-sass-package-importer'
+import includePaths from 'rollup-plugin-includepaths'
 
 const mode = process.env.NODE_ENV;
 const dev = mode === 'development';
 const legacy = !!process.env.SAPPER_LEGACY_BUILD;
+
+const extensions = ['.ts', '.js', '.mjs', '.html', '.svelte']
+const includePathsOptions = {
+	include: {},
+	paths: ['src'],
+	external: ['AppModule'],
+	extensions,//: ['.js', '.json', '.html']
+}
 
 const onwarn = (warning, onwarn) =>
 	(warning.code === 'MISSING_EXPORT' && /'preload'/.test(warning.message)) ||
@@ -46,13 +55,15 @@ export default {
 			}),
 			typescript({ sourceMap: dev }),
 			resolve({
+				extensions,
 				browser: true,
 				dedupe: ['svelte']
 			}),
 			commonjs(),
+			includePaths(includePathsOptions),
 
 			legacy && babel({
-				extensions: ['.js', '.mjs', '.html', '.svelte'],
+				extensions,
 				babelHelpers: 'runtime',
 				exclude: ['node_modules/@babel/**'],
 				presets: [
@@ -105,10 +116,31 @@ export default {
 				})
 			}),
 			typescript({ sourceMap: dev }),
+			legacy && babel({
+				extensions,
+				babelHelpers: 'runtime',
+				exclude: ['node_modules/@babel/**'],
+				presets: [
+					['@babel/preset-env', {
+						targets: '> 0.25%, not dead'
+					}]
+				],
+				plugins: [
+					'@babel/plugin-syntax-dynamic-import',
+					'@babel/plugin-proposal-do-expressions',
+					'@babel/plugin-proposal-nullish-coalescing-operator',
+					'@babel/plugin-proposal-object-rest-spread',
+					['@babel/plugin-transform-runtime', {
+						useESModules: true
+					}]
+				]
+			}),
 			resolve({
+				extensions,
 				dedupe: ['svelte']
 			}),
-			commonjs()
+			commonjs(),
+			includePaths(includePathsOptions),
 		],
 		external: Object.keys(pkg.dependencies).concat(require('module').builtinModules),
 
