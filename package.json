@@ -28,6 +28,7 @@
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
     "reflect-metadata": "^0.1.13",
+    "rxjs": "^6.6.3",
     "sirv": "^1.0.6"
   },
   "devDependencies": {
@@ -64,6 +65,7 @@
     "node-sass": "^4.14.1",
     "node-sass-package-importer": "^5.3.2",
     "npm-run-all": "^4.1.5",
+    "postcss": "^8.0.9",
     "prettier": "^1.19.1",
     "rollup": "^2.26.11",
     "rollup-plugin-includepaths": "^0.2.4",
@@ -79,6 +81,15 @@
     "ts-loader": "^6.2.1",
     "ts-node": "9.0.0",
     "tsconfig-paths": "^3.9.0",
+    "tslib": "^2.0.1",
     "typescript": "^4.0.2"
+  },
+  "dependenciesMeta": {
+    "sapper": {
+      "unplugged": true
+    },
+    "svelte": {
+      "unplugged": true
+    }
   }
 }

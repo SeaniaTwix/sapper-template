@@ -10,6 +10,7 @@ import sveltePreprocess from 'svelte-preprocess';
 import typescript from 'rollup-plugin-typescript2';
 import packageImporter from 'node-sass-package-importer'
 import includePaths from 'rollup-plugin-includepaths'
+import path from 'path'
 
 const mode = process.env.NODE_ENV;
 const dev = mode === 'development';
@@ -23,10 +24,41 @@ const includePathsOptions = {
 	extensions,//: ['.js', '.json', '.html']
 }
 
-const onwarn = (warning, onwarn) =>
-	(warning.code === 'MISSING_EXPORT' && /'preload'/.test(warning.message)) ||
-	(warning.code === 'CIRCULAR_DEPENDENCY' && /[/\\]@sapper[/\\]/.test(warning.message)) ||
-	onwarn(warning);
+function resolveSapperModule() {
+  const moduleDirectory = path.resolve(__dirname, './src/node_modules/@sapper');
+
+  return {
+    name: 'resolve-@sapper',
+    resolveId(request) {
+      // Will throw "Could not load" if extensions are ommitted
+      if (request === '@sapper/app') {
+        return path.join(moduleDirectory, 'app.mjs')
+      } else if (request === '@sapper/server') {
+        return path.join(moduleDirectory, 'server.mjs')
+      } else if (request === '@sapper/service-worker') {
+        return path.join(moduleDirectory, 'service-worker.js')
+      }
+
+      return null
+    }
+  }
+}
+
+const onwarn = (warning, onwarn) => {
+  const avoidTabIndexZeroValue = warning.code === 'PLUGIN_WARNING'
+    && warning.message === 'A11y: avoid tabindex values above zero'
+  const exportPropertyUnused = warning.code === 'PLUGIN_WARNING'
+    && /.+ has unused export property '.+'./.test(warning.message)
+  const cssSelectorUnused = warning.code === 'PLUGIN_WARNING'
+    && /Unused CSS selector ".*"/.test(warning.message)
+  const missingExport = warning.code === 'MISSING_EXPORT'
+    && /'preload'/.test(warning.message)
+  const circularDependency = warning.code === 'CIRCULAR_DEPENDENCY'
+    && /[/\\]@sapper[/\\]/.test(warning.message)
+  return avoidTabIndexZeroValue || exportPropertyUnused || cssSelectorUnused || missingExport
+    || circularDependency
+    || onwarn(warning)
+}
 
 export default {
 	client: {
@@ -54,6 +86,7 @@ export default {
 				})
 			}),
 			typescript({ sourceMap: dev }),
+      resolveSapperModule(),
 			resolve({
 				extensions,
 				browser: true,
@@ -135,6 +168,7 @@ export default {
 					}]
 				]
 			}),
+      resolveSapperModule(),
 			resolve({
 				extensions,
 				dedupe: ['svelte']
@@ -152,6 +186,7 @@ export default {
 		input: config.serviceworker.input(),
 		output: config.serviceworker.output(),
 		plugins: [
+      resolveSapperModule(),
 			resolve(),
 			replace({
 				'process.browser': true,
