@@ -70,8 +70,6 @@ export default {
 				'process.env.NODE_ENV': JSON.stringify(mode)
 			}),
 			svelte({
-				dev,
-				hydratable: true,
 				emitCss: true,
 				preprocess: sveltePreprocess({
 					postcss: {
@@ -83,7 +81,11 @@ export default {
 						includePaths: ['src'],
 						importer: packageImporter(),
 					}
-				})
+        }),
+        compilerOptions: {
+          hydratable: true,
+          customElement: false,
+        }
 			}),
 			typescript({ sourceMap: dev }),
       resolveSapperModule(),
@@ -133,9 +135,6 @@ export default {
 				'process.env.NODE_ENV': JSON.stringify(mode)
 			}),
 			svelte({
-				generate: 'ssr',
-				hydratable: true,
-				dev,
 				preprocess: sveltePreprocess({
 					postcss: {
 						plugins: [
@@ -146,7 +145,12 @@ export default {
 						includePaths: ['src'],
 						importer: packageImporter(),
 					}
-				})
+				}),
+        compilerOptions: {
+          generate: 'ssr',
+          hydratable: true,
+          customElement: false,
+        }
 			}),
 			typescript({ sourceMap: dev }),
 			legacy && babel({
