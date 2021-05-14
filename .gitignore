@@ -1,11 +1,20 @@
+# macOS
 .DS_Store
+
+# nodejs
 /node_modules/
+
+# svelte
 /src/node_modules/@sapper/
-yarn-error.log
-/cypress/screenshots/
 /__sapper__/
+
+# dev
+/cypress/screenshots/
 /.idea/
+
+# yarn
 .yarn/*
 !.yarn/releases
 !.yarn/plugins
 .pnp.*
+yarn-error.log

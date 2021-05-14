@@ -1,31 +1,31 @@
-import resolve from '@rollup/plugin-node-resolve';
-import replace from '@rollup/plugin-replace';
-import commonjs from '@rollup/plugin-commonjs';
-import svelte from 'rollup-plugin-svelte';
-import babel from '@rollup/plugin-babel';
-import { terser } from 'rollup-plugin-terser';
-import config from 'sapper/config/rollup.js';
-import pkg from './package.json';
-import sveltePreprocess from 'svelte-preprocess';
-import typescript from 'rollup-plugin-typescript2';
+import resolve from '@rollup/plugin-node-resolve'
+import replace from '@rollup/plugin-replace'
+import commonjs from '@rollup/plugin-commonjs'
+import svelte from 'rollup-plugin-svelte'
+import babel from '@rollup/plugin-babel'
+import {terser} from 'rollup-plugin-terser'
+import config from 'sapper/config/rollup.js'
+import pkg from './package.json'
+import sveltePreprocess from 'svelte-preprocess'
+import typescript from 'rollup-plugin-typescript2'
 import packageImporter from 'node-sass-package-importer'
 import includePaths from 'rollup-plugin-includepaths'
 import path from 'path'
 
-const mode = process.env.NODE_ENV;
-const dev = mode === 'development';
-const legacy = !!process.env.SAPPER_LEGACY_BUILD;
+const mode = process.env.NODE_ENV
+const dev = mode === 'development'
+const legacy = !!process.env.SAPPER_LEGACY_BUILD
 
 const extensions = ['.ts', '.js', '.mjs', '.html', '.svelte']
 const includePathsOptions = {
-	include: {},
-	paths: ['src'],
-	external: ['AppModule'],
-	extensions,//: ['.js', '.json', '.html']
+  include: {},
+  paths: ['src'],
+  external: ['AppModule'],
+  extensions,//: ['.js', '.json', '.html']
 }
 
 function resolveSapperModule() {
-  const moduleDirectory = path.resolve(__dirname, './src/node_modules/@sapper');
+  const moduleDirectory = path.resolve(__dirname, './src/node_modules/@sapper')
 
   return {
     name: 'resolve-@sapper',
@@ -40,7 +40,7 @@ function resolveSapperModule() {
       }
 
       return null
-    }
+    },
   }
 }
 
@@ -60,147 +60,144 @@ const onwarn = (warning, onwarn) => {
     || onwarn(warning)
 }
 
+const settings = {
+  typescript: typescript({sourceMap: dev}),
+  svelte: svelte({
+    emitCss: true,
+    preprocess: sveltePreprocess({
+      postcss: {
+        plugins: [
+          require('autoprefixer')({}),
+        ],
+      },
+      scss: {
+        includePaths: ['src'],
+        importer: packageImporter(),
+      },
+    }),
+    compilerOptions: {
+      hydratable: true,
+      customElement: false,
+    },
+  }),
+  svelteServer: svelte({
+    preprocess: sveltePreprocess({
+      postcss: {
+        plugins: [
+          require('autoprefixer')({}),
+        ],
+      },
+      scss: {
+        includePaths: ['src'],
+        importer: packageImporter(),
+      },
+    }),
+    compilerOptions: {
+      generate: 'ssr',
+      hydratable: true,
+      customElement: false,
+    },
+  }),
+  babel: babel({
+    extensions,
+    babelHelpers: 'runtime',
+    exclude: ['node_modules/@babel/**'],
+    presets: [
+      ['@babel/preset-env', {
+        targets: '> 0.25%, not dead',
+      }],
+    ],
+    plugins: [
+      '@babel/plugin-syntax-dynamic-import',
+      '@babel/plugin-proposal-do-expressions',
+      '@babel/plugin-proposal-nullish-coalescing-operator',
+      '@babel/plugin-proposal-object-rest-spread',
+      ['@babel/plugin-transform-runtime', {
+        useESModules: true,
+      }],
+    ],
+  }),
+  commonjs: commonjs(),
+  includePaths: includePaths(includePathsOptions),
+}
+
+const options = {
+  resolve: {
+    extensions,
+    dedupe: ['svelte'],
+  }
+}
+
 export default {
-	client: {
-		input: config.client.input(),
-		output: config.client.output(),
-		plugins: [
-			replace({
-				'process.browser': true,
-				'process.env.NODE_ENV': JSON.stringify(mode)
-			}),
-			svelte({
-				emitCss: true,
-				preprocess: sveltePreprocess({
-					postcss: {
-						plugins: [
-							require('autoprefixer')({}),
-						],
-					},
-					scss: {
-						includePaths: ['src'],
-						importer: packageImporter(),
-					}
-        }),
-        compilerOptions: {
-          hydratable: true,
-          customElement: false,
-        }
-			}),
-			typescript({ sourceMap: dev }),
+  client: {
+    input: config.client.input(),
+    output: config.client.output(),
+    plugins: [
+      replace({
+        'process.browser': true,
+        'process.env.NODE_ENV': JSON.stringify(mode),
+        preventAssignment: true,
+      }),
+      settings.svelte,
+      settings.typescript,
       resolveSapperModule(),
-			resolve({
-				extensions,
-				browser: true,
-				dedupe: ['svelte']
-			}),
-			commonjs(),
-			includePaths(includePathsOptions),
+      resolve({...options.resolve, browser: true,}),
+      settings.commonjs,
+      settings.includePaths,
 
-			legacy && babel({
-				extensions,
-				babelHelpers: 'runtime',
-				exclude: ['node_modules/@babel/**'],
-				presets: [
-					['@babel/preset-env', {
-						targets: '> 0.25%, not dead'
-					}]
-				],
-				plugins: [
-					'@babel/plugin-syntax-dynamic-import',
-					'@babel/plugin-proposal-do-expressions',
-					'@babel/plugin-proposal-nullish-coalescing-operator',
-					'@babel/plugin-proposal-object-rest-spread',
-					['@babel/plugin-transform-runtime', {
-						useESModules: true
-					}]
-				]
-			}),
+      legacy && settings.babel,
 
-			!dev && terser({
-				module: true
-			})
-		],
+      !dev && terser({
+        module: true,
+      }),
+    ],
 
-		preserveEntrySignatures: false,
-		onwarn,
-	},
+    preserveEntrySignatures: false,
+    onwarn,
+  },
 
-	server: {
-		input: config.server.input(),
-		output: config.server.output(),
-		plugins: [
-			replace({
-				'process.browser': false,
-				'process.env.NODE_ENV': JSON.stringify(mode)
-			}),
-			svelte({
-				preprocess: sveltePreprocess({
-					postcss: {
-						plugins: [
-							require('autoprefixer')({}),
-						],
-					},
-					scss: {
-						includePaths: ['src'],
-						importer: packageImporter(),
-					}
-				}),
-        compilerOptions: {
-          generate: 'ssr',
-          hydratable: true,
-          customElement: false,
-        }
-			}),
-			typescript({ sourceMap: dev }),
-			legacy && babel({
-				extensions,
-				babelHelpers: 'runtime',
-				exclude: ['node_modules/@babel/**'],
-				presets: [
-					['@babel/preset-env', {
-						targets: '> 0.25%, not dead'
-					}]
-				],
-				plugins: [
-					'@babel/plugin-syntax-dynamic-import',
-					'@babel/plugin-proposal-do-expressions',
-					'@babel/plugin-proposal-nullish-coalescing-operator',
-					'@babel/plugin-proposal-object-rest-spread',
-					['@babel/plugin-transform-runtime', {
-						useESModules: true
-					}]
-				]
-			}),
+  server: {
+    input: config.server.input(),
+    output: config.server.output(),
+    plugins: [
+      replace({
+        'process.browser': false,
+        'process.env.NODE_ENV': JSON.stringify(mode),
+        preventAssignment: true,
+      }),
+      settings.svelteServer,
+      settings.typescript,
+
+      legacy && settings.babel,
+
       resolveSapperModule(),
-			resolve({
-				extensions,
-				dedupe: ['svelte']
-			}),
-			commonjs(),
-			includePaths(includePathsOptions),
-		],
-		external: Object.keys(pkg.dependencies).concat(require('module').builtinModules),
+      resolve(options.resolve),
+      settings.commonjs,
+      settings.includePaths,
+    ],
 
-		preserveEntrySignatures: 'strict',
-		onwarn,
-	},
+    external: Object.keys(pkg.dependencies).concat(require('module').builtinModules),
 
-	serviceworker: {
-		input: config.serviceworker.input(),
-		output: config.serviceworker.output(),
-		plugins: [
+    preserveEntrySignatures: 'strict',
+    onwarn,
+  },
+
+  serviceworker: {
+    input: config.serviceworker.input(),
+    output: config.serviceworker.output(),
+    plugins: [
       resolveSapperModule(),
-			resolve(),
-			replace({
-				'process.browser': true,
-				'process.env.NODE_ENV': JSON.stringify(mode)
-			}),
-			commonjs(),
-			!dev && terser()
-		],
+      resolve(),
+      replace({
+        'process.browser': true,
+        'process.env.NODE_ENV': JSON.stringify(mode),
+        preventAssignment: true,
+      }),
+      settings.commonjs,
+      !dev && terser(),
+    ],
 
-		preserveEntrySignatures: false,
-		onwarn,
-	}
-};
+    preserveEntrySignatures: false,
+    onwarn,
+  },
+}
